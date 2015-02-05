@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/PreetamJinka/catena"
 	"github.com/VividCortex/siesta"
@@ -31,6 +32,19 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 
 	log.Println(descs)
 
+	now := time.Now().Unix()
+	for i, desc := range descs {
+		if desc.Start <= 0 {
+			desc.Start += now
+		}
+
+		if desc.End <= 0 {
+			desc.End += now
+		}
+
+		descs[i] = desc
+	}
+
 	resp := db.Query(descs)
 
 	if *downsample <= 1 {
@@ -56,6 +70,10 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 				pointIndex++
 				seenPoints = 1
 				series.Points[pointIndex] = p
+			}
+
+			if j == len(series.Points) {
+				series.Points[pointIndex].Value /= float64(seenPoints)
 			}
 		}
 

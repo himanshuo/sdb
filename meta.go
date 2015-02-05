@@ -14,6 +14,11 @@ func getSources(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	var params siesta.Params
 	start := params.Int64("start", -86400, "Starting timestamp")
 	end := params.Int64("end", 0, "Ending timestamp")
+	err := params.Parse(r.Form)
+	if err != nil {
+		c.Set(errorKey, err.Error())
+		return
+	}
 
 	now := time.Now().Unix()
 
