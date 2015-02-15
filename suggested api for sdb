@@ -1,0 +1,127 @@
+querying:
+GET http://localhost:8080/db/query?u=<user>&p=<password> 
+{
+        "sources": ["source1", "source2"...],               (inner join by time)
+	"metrics": ["metric_name1", "metric_name2"],
+
+
+    "start_absolute": 1357023600000, (OR yyyy-mm-dd hh:mm:ss:mmm format OR now() )
+    "end_absolute": 1357023600100,   (OR yyyy-mm-dd hh:mm:ss:mmm format OR now() )
+
+    "start_relative": "RELATIVE TIME",   (aliases include: now(),  )
+    "end_relative"  : "RELATIVE TIME",
+
+/*      EXPLANATION OF RELATIVE TIME: 
+			example: 13423423432-2d+5h ....
+			this will just be equation with optional variables u,s,m,h,d,w representing microseconds, seconds, minutes, hours, days, and weeks, respectively.
+				default is microseconds.
+			if no start_time given, then return points from earliest time to endtime
+			if no end_time given, then return points from start_time to now.
+*/
+
+	"limit": 1,
+	"ascending": 1, (default true)
+
+
+	//filter acts as WHERE clause.
+	//filter is a list of filter objects. filter objects have a metric, an operator, and a value.
+	//can be a lot more complex. should allow nesting. should also allow OR 
+	//currently just AND's filter objects.
+	"filter": [ 
+			{
+				"metric": "my.metric",
+				"operator": "=",       supports (=, <, >, !=, ),
+				"value": "some.value"
+			},
+			{
+				...
+			}
+			...
+	],
+	
+	
+	"duration": 10m,     (a point must last atleast x seconds (in this case 10 minutes) to be part of result)
+	
+/* built in aggregators include:
+count(metric_name), 
+min(metric_name), 
+max(metric_name), 
+mean(metric_name), 
+mode(metric_name), 
+median(metric_name), 
+distinct(metric_name), 
+percentile(metric_name,nth perentile of sorted set of values), 
+derivative(metric_name)(gives rate of change of value)
+...
+should allow users to make their own aggregators
+*/
+
+
+	//by default, aggregators are ORed together to give a list of results. 
+	"aggregators": [
+				{
+					"name" : "aggregator name",         
+					"metric":"metric name"
+				}
+	]
+
+
+
+
+	
+     
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+continuous queries: POST http://localhost:8080/db/continuous?u=<user>&p=<password> 
+	user basically just input a regular query.
+	internally, whenever a insert is run with the sources specified in the continuous query, we will run the continuous query and store the result for viewing by the 
+user. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+inserting:
+	POST http://localhost:8080/db/insert?u=<user>&p=<password>
+	{
+		"source":"source_name",
+		"metrics": ["a","b","c"...]
+		"values": ["a1","a2","a3"...]
+	} 
+
+
+
+
+upserting: POST http://localhost:8080/db/upsert?u=<user>&p=<password>
+	same as insert. just updates value if it already exists.

@@ -4,6 +4,8 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	
+	"fmt"
 
 	"github.com/PreetamJinka/catena"
 	"github.com/VividCortex/siesta"
@@ -20,7 +22,6 @@ func main() {
 	}
 
 	service := siesta.NewService("/")
-
 	service.AddPre(func(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 		c.Set(catenaKey, db)
 	})
@@ -32,6 +33,9 @@ func main() {
 
 	service.Route("POST", "/insert", "Inserts rows into the database", insert)
 	service.Route("GET", "/query", "Queries the database", query)
+
+	service.Route("POST", "/upsert", "Inserts rows into database if rows don't exist. If they do, they updates field to contain new values.", upsert)
+	fmt.Println(service)
 
 	log.Fatal(http.ListenAndServe(*listenAddr, service))
 }

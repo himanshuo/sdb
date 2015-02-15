@@ -10,10 +10,18 @@ import (
 	"github.com/VividCortex/siesta"
 )
 
+func logMe(str string ){
+	log.Println("--------------")
+	log.Println(str)
+	log.Println("--------------")
+}
+
+
 func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	db := c.Get(catenaKey).(*catena.DB)
 
 	var params siesta.Params
+
 	downsample := params.Int64("downsample", 0, "A downsample value of averages N points at a time")
 	err := params.Parse(r.Form)
 	if err != nil {
@@ -30,9 +38,9 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(descs)
 
 	now := time.Now().Unix()
+	
 	for i, desc := range descs {
 		if desc.Start <= 0 {
 			desc.Start += now

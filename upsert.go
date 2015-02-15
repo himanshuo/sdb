@@ -9,14 +9,15 @@ import (
 	"github.com/VividCortex/siesta"
 )
 
-func insert(c siesta.Context, w http.ResponseWriter, r *http.Request) {
+func upsert(c siesta.Context, w http.ResponseWriter, r *http.Request) {
+	log.Println("up until now, its all good sexy sexy sexy.")
 	db := c.Get(catenaKey).(*catena.DB)
 
 	rows := catena.Rows{}
 
 
 	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(&rows)
+	err := dec.Decode(&rows)//stores the decoded r.Body into rows.
 
 	log.Println(rows)
 	if err != nil {
