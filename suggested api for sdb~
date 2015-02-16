@@ -1,4 +1,5 @@
-POST http://localhost:8080/db/query?u=<user>&p=<password> 
+querying:
+GET http://localhost:8080/db/query?u=<user>&p=<password> 
 {
         "sources": ["source1", "source2"...],               (inner join by time)
 	"metrics": ["metric_name1", "metric_name2"],
@@ -118,3 +119,9 @@ inserting:
 		"metrics": ["a","b","c"...]
 		"values": ["a1","a2","a3"...]
 	} 
+
+
+
+
+upserting: POST http://localhost:8080/db/upsert?u=<user>&p=<password>
+	same as insert. just updates value if it already exists.

@@ -87,6 +87,8 @@ should allow users to make their own aggregators
 
 
 
+
+
 continuous queries: POST http://localhost:8080/db/continuous?u=<user>&p=<password> 
 	user basically just input a regular query.
 	internally, whenever a insert is run with the sources specified in the continuous query, we will run the continuous query and store the result for viewing by the 
@@ -125,3 +127,6 @@ inserting:
 
 upserting: POST http://localhost:8080/db/upsert?u=<user>&p=<password>
 	same as insert. just updates value if it already exists.
+
+
+

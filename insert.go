@@ -16,9 +16,12 @@ func insert(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 
 
 	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(&rows)
+	err := dec.Decode(&rows)//stores the decoded r.Body into rows.
 
 	log.Println(rows)
+	//rows example: [{himanshu  100 3} {himanshu mymetric 105 3.5}]
+
+	
 	if err != nil {
 		c.Set(errorKey, err.Error())
 		return
