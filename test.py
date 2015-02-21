@@ -10,11 +10,14 @@ import json
 
 
 data={
-	"sources":["himanshu"],
-	"metrics":["mymetric"],
-	"start_absolute":90,
-	"end_absolute": 110
+	"source_metric":[
+			["himanshu","mymetric"]
+			],
+	"start":90,
+	"end": 110
 }
 data=json.dumps(data)
 r = requests.get('http://localhost:8080/query', data= data)
 print r.json()
+
+

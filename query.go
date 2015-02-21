@@ -35,24 +35,37 @@ type QueryDesc struct {
 */
 
 type UserQuery struct {
-		Sources []string `json:"sources"`
-		Metrics []string `json:"metrics"`
-		Start_Absolute  int64  `json:"start_absolute"`
-		End_Absolute    int64  `json:"end_absolute"`	
+		SourceMetric [][]string `json:"sourceMetric"`
+		Start  int64  `json:"start_absolute"`
+		End    int64  `json:"end_absolute"`	
 	}
 
 func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	db := c.Get(catenaKey).(*catena.DB)
 
 	var params siesta.Params
-	var user_query UserQuery //the user's query input
+	var userQuery UserQuery //the user's query input
 	
+
+
+	//get the user input and deserialize it
 	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(&user_query)//set user_query
+	err := dec.Decode(&userQuery)//set userQuery
+
+	if err!=nil{
+		log.Println("there was an error.")
+		c.Set(errorKey, err.Error())
+		return
+	}
+	log.Println("-----query info--------")
+	log.Println(r.Body)
+	log.Println(userQuery) //{[[himanshu mymetric]] 0 0}
+	log.Println("-------------")
 
 
 
 
+	//unclear what this is doing.
 	downsample := params.Int64("downsample", 0, "A downsample value of averages N points at a time")
 	err = params.Parse(r.Form)
 	if err != nil {
@@ -62,35 +75,39 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 
 	var descs []catena.QueryDesc//the list of descs that will be used to call the db.
 	
-	dec = json.NewDecoder(r.Body)
-	err = dec.Decode(&descs)
+	//go through all the source_query pairs and put them into descs array.
+	for _, sourceMetric := range userQuery.SourceMetric {
+    	
+    	//get the source and metric from the query.
+     	source := sourceMetric[0]
+     	metric := sourceMetric[1]
+     	
+     	//build desc
+     	newDesc := new(catena.QueryDesc)
+     	newDesc.Source = source
+     	newDesc.Metric = metric
+     	newDesc.Start = userQuery.Start
+     	newDesc.End = userQuery.End
 
-	//log.Println("-------------")
-	//log.Println(descs)//[{himanshu mymetric  90 110}] 
-	//NOTE:if no metric is provided then db will just store value without metric. weird.
-	//todo: look into this.
-	//log.Println("-------------")
-	
-	if err != nil {
-		c.Set(errorKey, err.Error())
-		return
+     	//add new desc to descs
+     	descs = append(descs, *newDesc)
+
 	}
+	log.Println("---------descs-----------------")
+	log.Println(descs)
+	log.Println("-------------------------------")
 
 
-	now := time.Now().Unix()
-	
-	for i, desc := range descs { //i is index,  desc is querydesc.
-		if desc.Start <= 0 {
-			desc.Start += now
-		}
 
-		if desc.End <= 0 {
-			desc.End += now
-		}
+	handleRelativeTime(descs)
 
-		descs[i] = desc
-	}
 
+
+
+
+	log.Println("---------descs-----------------")
+	log.Println(descs)
+	log.Println("-------------------------------")
 
 	/* db.Query takes in a list of 
 	type QueryDesc struct {
@@ -105,10 +122,19 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	*/
 	resp := db.Query(descs)
 
+
+	log.Println("----------resp-----------------")
+	log.Println(resp)
+	log.Println("-------------------------------")
+
+
+
 	if *downsample <= 1 {
 		c.Set(responseKey, resp)
 		return
 	}
+
+
 
 	for i, series := range resp.Series {
 		pointIndex := 0
@@ -140,4 +166,26 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	c.Set(responseKey, resp)
+}
+
+
+
+func handleRelativeTime(descs []catena.QueryDesc){
+
+
+	now := time.Now().Unix()
+	
+	for i, desc := range descs { //i is index,  desc is querydesc.
+		if desc.Start <= 0 { 
+			//historical query. given negative number, you want some time that
+			//is say 10 seconds before now(). handles that.
+			desc.Start += now
+		}
+
+		if desc.End <= 0 {
+			//same as desc.Start.
+			desc.End += now
+		}
+		descs[i] = desc//update the desc with neg value with this logic.
+	}
 }

@@ -1,15 +1,16 @@
 querying:
-GET http://localhost:8080/db/query?u=<user>&p=<password> 
+GET http://localhost:8080/db/query? 
 {
-        "sources": ["source1", "source2"...],               (inner join by time)
-	"metrics": ["metric_name1", "metric_name2"],
+        "source_metric": [
+        				[ "source1", "metric_name1"] ,
+        				[ "source2", "metric_name2"] ,
+        				[ "source3", "metric_name3"] ,
+        				]   
+	
 
 
-    "start_absolute": 1357023600000, (OR yyyy-mm-dd hh:mm:ss:mmm format OR now() )
-    "end_absolute": 1357023600100,   (OR yyyy-mm-dd hh:mm:ss:mmm format OR now() )
-
-    "start_relative": "RELATIVE TIME",   (aliases include: now(),  )
-    "end_relative"  : "RELATIVE TIME",
+    "start": "RELATIVE TIME",   (aliases include: now(), yyy-mm-dd hh:mm:ss:mmm, 1357023600000)
+    "end"  : "RELATIVE TIME",
 
 /*      EXPLANATION OF RELATIVE TIME: 
 			example: 13423423432-2d+5h ....
@@ -89,7 +90,7 @@ should allow users to make their own aggregators
 
 
 
-continuous queries: POST http://localhost:8080/db/continuous?u=<user>&p=<password> 
+continuous queries: POST http://localhost:8080/db/continuous?
 	user basically just input a regular query.
 	internally, whenever a insert is run with the sources specified in the continuous query, we will run the continuous query and store the result for viewing by the 
 user. 
@@ -115,7 +116,7 @@ user.
 
 
 inserting:
-	POST http://localhost:8080/db/insert?u=<user>&p=<password>
+	POST http://localhost:8080/db/insert?
 	{
 		"source":"source_name",
 		"metrics": ["a","b","c"...]
@@ -125,7 +126,7 @@ inserting:
 
 
 
-upserting: POST http://localhost:8080/db/upsert?u=<user>&p=<password>
+upserting: POST http://localhost:8080/db/upsert?
 	same as insert. just updates value if it already exists.
 
 
