@@ -2,7 +2,7 @@
 
 import requests
 import json
-
+import pprint
 
 #curl -XGET -H 'Content-Type: application/json' -d 
 #'[{"source": "himanshu", "metric": "mymetric", "start": 90, 
@@ -11,13 +11,14 @@ import json
 
 data={
 	"source_metric":[
-			["himanshu","mymetric"]
+			["himanshu","mymetric"],
+			["my.source","my.metric"]
 			],
-	"start":90,
-	"end": 110
+	"start":"85+5",
+	"end": "120-10"
 }
 data=json.dumps(data)
 r = requests.get('http://localhost:8080/query', data= data)
-print r.json()
+pprint.pprint(r.json())
 
 

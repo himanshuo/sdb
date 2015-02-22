@@ -5,9 +5,14 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"math/big"
+	"strconv"
+
 
 	"github.com/PreetamJinka/catena"
 	"github.com/VividCortex/siesta"
+	"github.com/himanshuo/evaler"
+
 )
 /*
 
@@ -35,15 +40,15 @@ type QueryDesc struct {
 */
 
 type UserQuery struct {
-		SourceMetric [][]string `json:"sourceMetric"`
-		Start  int64  `json:"start_absolute"`
-		End    int64  `json:"end_absolute"`	
+		SourceMetric [][]string `json:"source_metric"`
+		Start  string  `json:"start"`
+		End    string  `json:"end"`	
 	}
 
 func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	db := c.Get(catenaKey).(*catena.DB)
 
-	var params siesta.Params
+	//var params siesta.Params
 	var userQuery UserQuery //the user's query input
 	
 
@@ -65,13 +70,7 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 
 
 
-	//unclear what this is doing.
-	downsample := params.Int64("downsample", 0, "A downsample value of averages N points at a time")
-	err = params.Parse(r.Form)
-	if err != nil {
-		c.Set(errorKey, err.Error())
-		return
-	}
+	
 
 	var descs []catena.QueryDesc//the list of descs that will be used to call the db.
 	
@@ -86,8 +85,8 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
      	newDesc := new(catena.QueryDesc)
      	newDesc.Source = source
      	newDesc.Metric = metric
-     	newDesc.Start = userQuery.Start
-     	newDesc.End = userQuery.End
+     	newDesc.Start = computeTime(userQuery.Start)
+     	newDesc.End = computeTime(userQuery.End)
 
      	//add new desc to descs
      	descs = append(descs, *newDesc)
@@ -99,7 +98,7 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 
 
 
-	handleRelativeTime(descs)
+	
 
 
 
@@ -122,70 +121,88 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	*/
 	resp := db.Query(descs)
 
+	/*
+	A QueryResponse is returned after querying the DB with a QueryDesc.
+     type QueryResponse struct {
+	     Series []Series `json:"series"`
+     }
 
-	log.Println("----------resp-----------------")
+    A Series is an ordered set of points
+	for a source and metric over a range
+	of time.
+	type Series struct {
+		// First timestamp
+		Start int64 `json:"start"`
+
+		// Last timestamp
+		End int64 `json:"end"`
+
+		Source string `json:"source"`
+		Metric string `json:"metric"`
+
+		Points []Point `json:"points"`
+	}
+
+	*/
+
+
+	log.Println("---------resp---------------")
 	log.Println(resp)
-	log.Println("-------------------------------")
+	log.Println(resp.Series)
+	log.Println("-----------------------------")
 
 
 
-	if *downsample <= 1 {
-		c.Set(responseKey, resp)
-		return
-	}
 
-
-
-	for i, series := range resp.Series {
-		pointIndex := 0
-		seenPoints := 1
-		currentPartition := series.Points[0].Timestamp / *downsample
-		for j, p := range series.Points {
-			if j == 0 {
-				continue
-			}
-
-			if p.Timestamp / *downsample == currentPartition {
-				series.Points[pointIndex].Value += p.Value
-				seenPoints++
-			} else {
-				currentPartition = p.Timestamp / *downsample
-				series.Points[pointIndex].Value /= float64(seenPoints)
-				pointIndex++
-				seenPoints = 1
-				series.Points[pointIndex] = p
-			}
-
-			if j == len(series.Points) {
-				series.Points[pointIndex].Value /= float64(seenPoints)
-			}
-		}
-
-		series.Points = series.Points[:pointIndex]
-		resp.Series[i] = series
-	}
 
 	c.Set(responseKey, resp)
 }
 
 
 
-func handleRelativeTime(descs []catena.QueryDesc){
 
 
+
+
+
+func computeTime(relativeTime string) int64{
+	/*
+		relative time would look something like:
+			13423423432-2d+5h
+			now()-2d+5h
+	*/
+
+	var bigTime,err = evaler.Eval(relativeTime)
+	var intTime int64
+	if err!=nil{//TODO:handle errors properly.
+		log.Println("malformed time")
+		//c.Set(errorKey, err.Error())
+		return 1
+	}
+	intTime, err = BigratToInt(bigTime)
+	if err!=nil{ //TODO:handle errors properly.
+		log.Println("malformed time")
+		//c.Set(errorKey, err.Error())
+		return 1
+	}
+
+	return handleNegativeTime(intTime) 
+
+}
+
+func handleNegativeTime(possibleNegTime int64) int64 {
 	now := time.Now().Unix()
-	
-	for i, desc := range descs { //i is index,  desc is querydesc.
-		if desc.Start <= 0 { 
+		if possibleNegTime <= 0 { 
 			//historical query. given negative number, you want some time that
 			//is say 10 seconds before now(). handles that.
-			desc.Start += now
+			return possibleNegTime + now
 		}
+		return possibleNegTime
+}
 
-		if desc.End <= 0 {
-			//same as desc.Start.
-			desc.End += now
-		}
-		descs[i] = desc//update the desc with neg value with this logic.
-	}
+// BigratToInt converts a *big.Rat to an int64 (with truncation);
+// returns an error for integer overflows
+func BigratToInt(bigrat *big.Rat) (int64, error) {
+	float_string := bigrat.FloatString(0)
+	return strconv.ParseInt(float_string, 10, 64)
 }
