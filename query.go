@@ -7,6 +7,7 @@ import (
 	"time"
 	"math/big"
 	"strconv"
+	// "regexp"
 
 
 	"github.com/PreetamJinka/catena"
@@ -85,8 +86,8 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
      	newDesc := new(catena.QueryDesc)
      	newDesc.Source = source
      	newDesc.Metric = metric
-     	newDesc.Start = computeTime(userQuery.Start)
-     	newDesc.End = computeTime(userQuery.End)
+     	newDesc.Start = handleTime(userQuery.Start)
+     	newDesc.End = handleTime(userQuery.End)
 
      	//add new desc to descs
      	descs = append(descs, *newDesc)
@@ -165,26 +166,43 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 
 
 
-func computeTime(relativeTime string) int64{
+func handleTime(relativeTime string) int64{
 	/*
 		relative time would look something like:
 			13423423432-2d+5h
 			now()-2d+5h
+		 OR
+		 	yyyy-mm-dd hh:mm:ss
 	*/
 
-	var bigTime,err = evaler.Eval(relativeTime)
-	var intTime int64
-	if err!=nil{//TODO:handle errors properly.
-		log.Println("malformed time")
-		//c.Set(errorKey, err.Error())
+	//if in yyyy-mm-dd hh:mm:ss format:
+	//var dateRegex = regexp.MustCompile(`(\d{4}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})`)
+	//dateRegex.FindAllString(relativeTime ,-1)
+	const customForm = "2006-01-02 15:04:00"
+    t, err := time.Parse(customForm, relativeTime)
+    var intTime int64
+    if err!=nil{
+    	//else just handle it regularly.
+		var bigTime,err = evaler.Eval(relativeTime)
+		if err!=nil{//TODO:handle errors properly.
+			log.Println("malformed time")
+			//c.Set(errorKey, err.Error())
+			return 1
+		}
+		intTime, err = BigratToInt(bigTime)
+		if err!=nil{ //TODO:handle errors properly.
+			log.Println("malformed time")
+			//c.Set(errorKey, err.Error())
 		return 1
-	}
-	intTime, err = BigratToInt(bigTime)
-	if err!=nil{ //TODO:handle errors properly.
-		log.Println("malformed time")
-		//c.Set(errorKey, err.Error())
-		return 1
-	}
+		}
+    } else {
+
+    	intTime = t.Unix()
+    }
+
+    
+
+	
 
 	return handleNegativeTime(intTime) 
 

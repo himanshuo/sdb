@@ -14,8 +14,8 @@ data={
 			["himanshu","mymetric"],
 			["my.source","my.metric"]
 			],
-	"start":"85+5",
-	"end": "120-10"
+	"start":"now()",
+	"end": "now()+20d"
 }
 data=json.dumps(data)
 r = requests.get('http://localhost:8080/query', data= data)
