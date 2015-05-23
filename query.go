@@ -7,7 +7,7 @@ import (
 	"time"
 	"math/big"
 	"strconv"
-	// "regexp"
+	"sort"
 
 
 	"github.com/PreetamJinka/catena"
@@ -43,9 +43,23 @@ type QueryDesc struct {
 type UserQuery struct {
 		SourceMetric [][]string `json:"source_metric"`
 		Start  string  `json:"start"`
-		End    string  `json:"end"`	
+		End    string  `json:"end"`
+		Limit int64 `json:"limit"`
+		Descending bool `json:"descending"`
+		Filter []QueryFilter `json:"ascending"`
+		Aggregators []QueryAggregator `json:"aggregators"`
+		MinDuration int64 `json:"min_duration"`
 	}
-
+type  QueryFilter struct{
+	Metric string `json:"metric"`
+	Operator string `json:"operator"`
+	Value string `json:"value"`
+}
+type  QueryAggregator struct{
+	Name string `json:"name"`
+	Metric string `json:"metric"`
+	//...add more fields as needed.
+}
 func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 	db := c.Get(catenaKey).(*catena.DB)
 
@@ -81,6 +95,10 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
     	//get the source and metric from the query.
      	source := sourceMetric[0]
      	metric := sourceMetric[1]
+
+
+
+
      	
      	//build desc
      	newDesc := new(catena.QueryDesc)
@@ -121,6 +139,74 @@ func query(c siesta.Context, w http.ResponseWriter, r *http.Request) {
 
 	*/
 	resp := db.Query(descs)
+
+	//NOTE: we are doing stuff like limit, ascending,... on POINTS of series. Not series themselves.
+	for i, _ := range resp.Series{
+
+
+
+		//handle ascending/descending. user specifies descending or not. if nothing given, then assume ascending.
+		//always sort since it is time series.
+		if userQuery.Descending {
+			sort.Sort(ByDescendingTime{resp.Series[i].Points})
+		} else {
+			sort.Sort(ByAscendingTime{resp.Series[i].Points})
+		}
+
+		//handle duration
+		//previous. trash.
+		//a = append(    a[:i],     a[i+1:]...  )
+		// if userQuery.Duration >0 && resp.Series[i].End - resp.Series[i].Start < userQuery.Duration {
+		// 	resp.Series = append(resp.Series[0:i-1],resp.Series[i+1:] )//remov
+		// 	// i=i-1
+		// }
+		//
+		//new. correct sudocode
+		// point_to_insert = cur_serious[0]
+		
+		// for all points in cur_series:
+		// 	if curpoint.timestamp - last inserted point < DURATION:
+		// 		do nothing 
+		// 	else:
+		// 		retpoints.add(point_to_insert)
+		// 		point_to_insert = curpoint
+		
+		if (len(resp.Series[i].Points) > 0) && (userQuery.Duration > 0) {
+			var newPoints []catena.Point
+			point_to_insert := resp.Series[i].Points[0]
+			for _, cur_point := range resp.Series[i].Points {
+			    if (cur_point.Timestamp - point_to_insert.Timestamp) >= userQuery.Duration {
+			    	newPoints = append(newPoints, point_to_insert)
+			    	point_to_insert = cur_point
+			    }
+			}
+
+			resp.Series[i].Points = newPoints
+			//resp.Start and resp.End also change
+			resp.Series[i].Start = newPoints[0].timestamp
+			resp.Series[i].End = newPoints[len(newPoints)-1].timestamp
+		}
+
+
+		//handle limit
+		if userQuery.Limit >0 {			
+			resp.Series[i].Points = resp.Series[i].Points[:userQuery.Limit]	 
+			resp.Series[i].End = resp.Series[i].Points[len(resp.Series[i].Points)-1].timestamp
+		}
+
+
+			
+		
+
+
+
+		 
+	}
+
+	
+
+	
+
 
 	/*
 	A QueryResponse is returned after querying the DB with a QueryDesc.
@@ -224,3 +310,29 @@ func BigratToInt(bigrat *big.Rat) (int64, error) {
 	float_string := bigrat.FloatString(0)
 	return strconv.ParseInt(float_string, 10, 64)
 }
+
+
+
+
+//[]catena.Point
+ // type Point struct {
+ // 	Timestamp int64   `json:"timestamp"`
+ // 	Value     float64 `json:"value"`
+ // }
+type Points []catena.Point
+
+func (s Points) Len() int      { return len(s) }
+func (s Points) Swap(i, j int) { s[i], s[j] = s[j], s[i] }//special syntax. CHECK IT OUT.
+
+//implements sort.Interface by providing Less and using the Len and
+// Swap methods of the embedded Organs value.
+type ByAscendingTime struct{ Points }
+func (p ByAscendingTime) Less(i, j int) bool { return p.Points[i].Timestamp < p.Points[j].Timestamp }
+
+
+
+type ByDescendingTime struct{ Points }
+func (p ByDescendingTime) Less(i, j int) bool { return p.Points[i].Timestamp > p.Points[j].Timestamp }
+
+//usage
+//sort.Sort(ByAscendingTime{s})

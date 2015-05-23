@@ -14,14 +14,14 @@ GET http://localhost:8080/db/query?
 
 /*      EXPLANATION OF RELATIVE TIME: 
 			example: 13423423432-2d+5h ....
-			this will just be equation with optional variables u,s,m,h,d,w representing microseconds, seconds, minutes, hours, days, and weeks, respectively.
+			this will just be equation with optional variables s,m,h,d,w representing microseconds, seconds, minutes, hours, days, and weeks, respectively.
 				default is microseconds.
 			if no start_time given, then return points from earliest time to endtime
 			if no end_time given, then return points from start_time to now.
 */
 
 	"limit": 1,
-	"ascending": 1, (default true)
+	"ascending": true, (default true)
 
 
 	//filter acts as WHERE clause.
@@ -41,7 +41,7 @@ GET http://localhost:8080/db/query?
 	],
 	
 	
-	"duration": 10m,     (a point must last atleast x seconds (in this case 10 minutes) to be part of result)
+	"duration": 10m,     (give points in increments of x time (in this case 10 minutes))
 	
 /* built in aggregators include:
 count(metric_name), 
